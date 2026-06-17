@@ -8,7 +8,6 @@ final class CameraWindowController: NSObject, NSWindowDelegate {
     private let panel: CameraPanel
     private weak var app: AppController?
     private let camera: CameraManager
-    private var clickMonitor: Any?
     private var ignoreMove = false
 
     var isVisible: Bool { panel.isVisible }
@@ -73,12 +72,10 @@ final class CameraWindowController: NSObject, NSWindowDelegate {
             }
         })
 
-        installClickMonitor()
     }
 
     func close() {
         guard panel.isVisible else { return }
-        removeClickMonitor()
         panel.orderOut(nil)
         camera.release()
         app?.isDetached = false
@@ -144,30 +141,11 @@ final class CameraWindowController: NSObject, NSWindowDelegate {
         return NSRect(x: x, y: y, width: size.width, height: size.height)
     }
 
-    // MARK: - Click-outside (only while attached)
-
-    private func installClickMonitor() {
-        removeClickMonitor()
-        clickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
-            guard let self, self.app?.isDetached == false else { return }
-            if let statusWindow = self.app?.menuBar?.button?.window,
-               statusWindow.frame.contains(NSEvent.mouseLocation) {
-                return // a click on our status item — let the toggle handle it
-            }
-            self.close()
-        }
-    }
-
-    private func removeClickMonitor() {
-        if let clickMonitor { NSEvent.removeMonitor(clickMonitor); self.clickMonitor = nil }
-    }
-
     // MARK: - Drag to detach
 
     func windowDidMove(_ notification: Notification) {
         guard !ignoreMove, app?.isDetached == false else { return }
         app?.markDetached()
-        removeClickMonitor()
     }
 }
 

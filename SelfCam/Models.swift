@@ -32,9 +32,18 @@ enum MaskShape: String, CaseIterable {
 
     var label: String {
         switch self {
-        case .rounded: return "Rounded"
+        case .rounded: return "Rectangular"
         case .circle:  return "Circle"
         case .square:  return "Square"
+        }
+    }
+
+    /// Horizontal inset from the rectangle edge to the edge of the inscribed shape.
+    /// Used to nudge overlay buttons inward so they stay inside the visible area.
+    func safeInset(for size: CGSize) -> CGFloat {
+        switch self {
+        case .rounded: return 0
+        case .circle, .square: return max(0, (size.width - min(size.width, size.height)) / 2)
         }
     }
 

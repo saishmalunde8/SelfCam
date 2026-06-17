@@ -21,50 +21,56 @@ enum Thumbnail {
     }
 }
 
-/// An elegant popover of the most recent snaps, with a "More…" link to the folder.
+/// A compact vertical list of the most recent snaps.
 struct SnapsGalleryView: View {
     let snaps: [URL]
     let onOpen: (URL) -> Void
     let onMore: () -> Void
 
-    private let thumb = CGSize(width: 176, height: 99) // 16:9
+    private let thumb = CGSize(width: 80, height: 45) // 16:9
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header
             HStack(alignment: .firstTextBaseline) {
                 Text("Recent Snaps")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
                 Spacer()
                 Button(action: onMore) {
-                    HStack(spacing: 4) {
-                        Text("All Snaps")
+                    HStack(spacing: 3) {
+                        Text("All")
                         Image(systemName: "arrow.up.forward.app")
                     }
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.system(size: 11, weight: .medium))
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.tint)
                 .help("Open the snaps folder in Finder")
             }
+            .padding(.horizontal, 14)
+            .padding(.top, 14)
+            .padding(.bottom, 10)
+
+            Divider()
 
             if snaps.isEmpty {
                 emptyState
             } else {
-                HStack(spacing: 14) {
+                VStack(spacing: 2) {
                     ForEach(snaps, id: \.self) { url in
                         ThumbCell(url: url, size: thumb) { onOpen(url) }
                     }
                 }
+                .padding(.vertical, 6)
             }
         }
-        .padding(20)
-        .frame(width: snaps.isEmpty ? 320 : CGFloat(snaps.count) * (thumb.width + 14) + 26)
+        .frame(width: 260)
     }
 
     private var emptyState: some View {
         VStack(spacing: 8) {
             Image(systemName: "camera.viewfinder")
-                .font(.system(size: 26, weight: .light))
+                .font(.system(size: 24, weight: .light))
                 .foregroundStyle(.secondary)
             Text("No snaps yet")
                 .font(.system(size: 13, weight: .medium))
@@ -73,12 +79,11 @@ struct SnapsGalleryView: View {
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 18)
+        .padding(.vertical, 20)
     }
 }
 
-/// A single thumbnail with a hover lift and a relative-time caption.
-/// The image is decoded (downsampled) asynchronously; the caption is computed once.
+/// A compact horizontal row: small 16:9 thumbnail on the left, relative-time label on the right.
 private struct ThumbCell: View {
     let url: URL
     let size: CGSize
@@ -89,7 +94,7 @@ private struct ThumbCell: View {
     @State private var hovering = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        HStack(spacing: 10) {
             Group {
                 if let image {
                     Image(nsImage: image).resizable().scaledToFill()
@@ -98,19 +103,23 @@ private struct ThumbCell: View {
                 }
             }
             .frame(width: size.width, height: size.height)
-            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
                     .stroke(Color.primary.opacity(0.08), lineWidth: 1)
             )
-            .shadow(color: .black.opacity(hovering ? 0.28 : 0.16), radius: hovering ? 8 : 4, y: hovering ? 3 : 1)
-            .scaleEffect(hovering ? 1.03 : 1)
 
             Text(caption)
-                .font(.system(size: 11))
+                .font(.system(size: 12))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
+
+            Spacer()
         }
+        .padding(.vertical, 5)
+        .padding(.horizontal, 10)
+        .background(hovering ? Color.primary.opacity(0.06) : .clear)
+        .clipShape(RoundedRectangle(cornerRadius: 6))
         .contentShape(Rectangle())
         .onTapGesture(perform: onTap)
         .onHover { hovering = $0 }

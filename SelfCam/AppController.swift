@@ -28,6 +28,9 @@ final class AppController: ObservableObject {
     /// True once the window has been dragged off the menu bar into a floating window.
     @Published var isDetached = false
 
+    /// True while the camera window is visible (i.e. the camera is running).
+    var isCameraActive: Bool { windowController?.isVisible == true }
+
     weak var menuBar: MenuBarController?
 
     private let defaults = UserDefaults.standard
@@ -35,7 +38,10 @@ final class AppController: ObservableObject {
     private var notch: NotchCatcher?
     private var snaps: Set<SnapController> = []
     private lazy var settingsController = SettingsWindowController(app: self, camera: camera, snaps: snapStore)
-    private lazy var snapsGallery = SnapsGalleryController(store: snapStore)
+    private lazy var snapsGallery = SnapsGalleryController(
+        store: snapStore,
+        onPreview: { [weak self] url in self?.openSnapPreview(url: url) }
+    )
 
     init() {
         windowSize = WindowSize(rawValue: defaults.string(forKey: "windowSize") ?? "") ?? .medium
@@ -88,6 +94,16 @@ final class AppController: ObservableObject {
         snapsGallery.toggle(from: button)
     }
 
+    func openSnapPreview(url: URL) {
+        guard let image = NSImage(contentsOf: url) else { return }
+        // Close the gallery so the editor is the sole foreground window (otherwise the
+        // two floating windows compete and the first Done click gets swallowed).
+        snapsGallery.close()
+        let controller = makeSnapController(returnToGallery: true)
+        // saveOnXClose:false — the original is already on disk; only save if the user clicks Done.
+        controller.present(image: image, mask: mask, snapStore: snapStore, saveOnXClose: false)
+    }
+
     // MARK: - Notch trigger
 
     private func updateNotch() {
@@ -105,18 +121,29 @@ final class AppController: ObservableObject {
 
     // MARK: - Snaps
 
-    func takeSnap() {
-        let controller = SnapController { [weak self] done in self?.snaps.remove(done) }
+    /// Creates and tracks a snap-editor controller. When it closes, the gallery is
+    /// reopened if `returnToGallery` is set (the snap was opened *from* the gallery)
+    /// or if it's already open — so the freshly saved snap shows on top.
+    private func makeSnapController(returnToGallery: Bool) -> SnapController {
+        let controller = SnapController { [weak self] done in
+            guard let self else { return }
+            self.snaps.remove(done)
+            if returnToGallery || self.snapsGallery.isOpen {
+                self.snapsGallery.show(from: self.menuBar?.button)
+            }
+        }
         snaps.insert(controller)
+        return controller
+    }
+
+    func takeSnap() {
+        let controller = makeSnapController(returnToGallery: false)
         camera.captureSnap(mirrored: camera.isMirrored) { [weak self, weak controller] image in
             guard let self, let controller else { return }
             if let image {
-                // Snapshot an immutable CGImage on the main thread, then hand THAT to
-                // the background writer — the NSImage itself is only ever touched on main.
-                if let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) {
-                    self.snapStore.save(cg)       // auto-save the original to the snaps folder
-                }
-                controller.present(image: image)  // and open the editable Polaroid
+                // Save happens when the user taps Done (with any annotations),
+                // or on window-close without Done (saves the original).
+                controller.present(image: image, mask: self.mask, snapStore: self.snapStore)
             } else {
                 self.snaps.remove(controller)
             }

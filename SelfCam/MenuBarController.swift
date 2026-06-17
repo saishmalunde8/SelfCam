@@ -87,7 +87,9 @@ final class MenuBarController: NSObject {
         notch.isEnabled = NotchCatcher.hasNotch
         menu.addItem(notch)
 
-        menu.addItem(item("Take Snap", action: #selector(takeSnap), keyEquivalent: "s"))
+        let snapItem = item("Take Snap", action: #selector(takeSnap), keyEquivalent: "s")
+        snapItem.isEnabled = app.isCameraActive
+        menu.addItem(snapItem)
         menu.addItem(item("Launch at Login", action: #selector(toggleLogin), on: LaunchAtLogin.isEnabled))
 
         menu.addItem(.separator())
@@ -122,6 +124,12 @@ final class MenuBarController: NSObject {
     }
 
     // MARK: - Actions
+
+    @objc func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        if menuItem.action == #selector(takeSnap) { return app?.isCameraActive == true }
+        if menuItem.action == #selector(toggleNotch) { return NotchCatcher.hasNotch }
+        return true
+    }
 
     @objc private func selectCamera(_ sender: NSMenuItem) {
         if let id = sender.representedObject as? String { camera?.select(deviceID: id) }

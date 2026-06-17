@@ -3,7 +3,8 @@ import SwiftUI
 /// A captured still you can mark up with a marker, in a clean editor.
 struct SnapView: View {
     let image: NSImage
-    let onDone: () -> Void
+    let mask: MaskShape
+    let onDone: (NSImage?) -> Void
 
     private struct Stroke { var points: [CGPoint]; var color: Color }
 
@@ -20,12 +21,11 @@ struct SnapView: View {
         VStack(spacing: 18) {
             photoCard
 
-            HStack(spacing: 16) {
+            HStack {
                 swatches
-                Spacer(minLength: 12)
+                Spacer()
                 toolbar
             }
-            .fixedSize(horizontal: false, vertical: true)
         }
         .padding(22)
         .frame(width: photoWidth + 44)
@@ -62,11 +62,10 @@ struct SnapView: View {
                     current = nil
                 }
         )
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
-        )
+        .clipShape(mask.anyShape)
+        .overlay {
+            mask.anyShape.stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        }
         .shadow(color: .black.opacity(0.22), radius: 14, y: 6)
     }
 
@@ -96,14 +95,13 @@ struct SnapView: View {
         HStack(spacing: 10) {
             Button("Clear") { strokes.removeAll() }
                 .disabled(strokes.isEmpty)
-            Button("Copy") { copyToClipboard() }
-            Button("Save") { save() }
-            Button("Done", action: onDone)
+            Button("Save as…") { save() }
+            Button("Done") { onDone(render()) }
                 .keyboardShortcut(.defaultAction)
                 .buttonStyle(.borderedProminent)
         }
         .controlSize(.large)
-        .fixedSize()   // never truncate the labels
+        .fixedSize()
     }
 
     private func draw(_ stroke: Stroke, in context: GraphicsContext) {
@@ -116,21 +114,36 @@ struct SnapView: View {
 
     // MARK: - Export
 
+    /// Renders image + annotations clipped to the chosen mask shape.
+    /// No shadow or border — those are display-only.
     @MainActor private func render() -> NSImage? {
-        let renderer = ImageRenderer(content: photoCard)
+        // Capture @State values before entering ImageRenderer's isolated context,
+        // where SwiftUI state storage is not initialised and they'd evaluate to [].
+        let capturedStrokes = strokes
+        let capturedCurrent = current
+        let content = ZStack {
+            Image(nsImage: image)
+                .resizable()
+                .scaledToFill()
+                .frame(width: photoWidth, height: photoHeight)
+                .clipped()
+            Canvas { context, _ in
+                for stroke in capturedStrokes { draw(stroke, in: context) }
+                if let c = capturedCurrent { draw(c, in: context) }
+            }
+            .frame(width: photoWidth, height: photoHeight)
+        }
+        .frame(width: photoWidth, height: photoHeight)
+        .clipShape(mask.anyShape)
+
+        let renderer = ImageRenderer(content: content)
         renderer.scale = 2
         return renderer.nsImage
     }
 
-    private func copyToClipboard() {
-        guard let image = render() else { return }
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.writeObjects([image])
-    }
-
     private func save() {
-        guard let image = render(),
-              let tiff = image.tiffRepresentation,
+        guard let rendered = render(),
+              let tiff = rendered.tiffRepresentation,
               let bitmap = NSBitmapImageRep(data: tiff),
               let png = bitmap.representation(using: .png, properties: [:]) else { return }
         let panel = NSSavePanel()

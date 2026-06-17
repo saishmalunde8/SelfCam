@@ -38,10 +38,13 @@ final class SnapStore: ObservableObject {
     /// `NSImage`) so there's no shared, non-thread-safe object being read on two
     /// threads at once. The filename carries milliseconds so two snaps in the same
     /// second can't overwrite each other.
-    func save(_ cgImage: CGImage) {
+    func save(_ cgImage: CGImage, completion: (() -> Void)? = nil) {
         let dir = directory
         let url = dir.appendingPathComponent("Snap \(Self.stamp()).png")
         Self.ioQueue.async {
+            // `defer` guarantees the completion fires even if encoding fails, so a
+            // caller waiting on it (e.g. to close a window) can never get stuck.
+            defer { if let completion { DispatchQueue.main.async(execute: completion) } }
             let rep = NSBitmapImageRep(cgImage: cgImage)
             guard let png = rep.representation(using: .png, properties: [:]) else { return }
             try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
