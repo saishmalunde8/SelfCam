@@ -17,12 +17,13 @@ private struct MaskWithArrow: Shape {
         let arrowBase = rect.minY + arrowHeight
         let leftX = ax - arrowWidth / 2
         let rightX = ax + arrowWidth / 2
-        // Arc-tangent rounding: produces a smooth curve at the tip instead of a sharp point
+        // Quadratic bezier sides: control points sit on the baseline so each slant
+        // departs/arrives with a horizontal tangent, merging smoothly into the window edge.
         p.move(to: CGPoint(x: leftX, y: arrowBase))
-        p.addArc(tangent1End: CGPoint(x: ax, y: rect.minY),
-                 tangent2End: CGPoint(x: rightX, y: arrowBase),
-                 radius: 5)
-        p.addLine(to: CGPoint(x: rightX, y: arrowBase))
+        p.addQuadCurve(to:      CGPoint(x: ax,     y: rect.minY),
+                       control: CGPoint(x: (leftX + ax) / 2, y: arrowBase))
+        p.addQuadCurve(to:      CGPoint(x: rightX, y: arrowBase),
+                       control: CGPoint(x: (ax + rightX) / 2, y: arrowBase))
         p.closeSubpath()
         return p
     }
