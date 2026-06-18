@@ -15,7 +15,6 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
-				SelfCam.entitlements,
 			);
 			target = 1A0000000000000000000004 /* SelfCam */;
 		};
