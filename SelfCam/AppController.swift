@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import Carbon.HIToolbox
 
 /// App-wide coordinator: owns the camera, the window, the notch catcher, and all
 /// persisted settings. The menu bar and the window talk to it.
@@ -36,6 +37,7 @@ final class AppController: ObservableObject {
     private let defaults = UserDefaults.standard
     private var windowController: CameraWindowController?
     private var notch: NotchCatcher?
+    private var hotKey: GlobalHotKey?
     private var snaps: Set<SnapController> = []
     private lazy var settingsController = SettingsWindowController(app: self, camera: camera, snaps: snapStore)
     private lazy var snapsGallery = SnapsGalleryController(
@@ -57,6 +59,10 @@ final class AppController: ObservableObject {
         camera.refreshDevices()
         camera.setZoom(CGFloat(zoom))   // didSet doesn't fire from init; apply now
         updateNotch()
+        // Global ⌥⌘M toggles the camera window from anywhere.
+        hotKey = GlobalHotKey(keyCode: kVK_ANSI_M, modifiers: cmdKey | optionKey) { [weak self] in
+            self?.toggleWindow(from: self?.menuBar?.button)
+        }
     }
 
     // MARK: - Window
