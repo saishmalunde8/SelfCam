@@ -7,7 +7,7 @@
 	<key>CFBundleExecutable</key>
 	<string>SelfCam</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.saish.selfcam</string>
+	<string>com.selfcam.app</string>
 	<key>CFBundleName</key>
 	<string>SelfCam</string>
 	<key>CFBundlePackageType</key>
