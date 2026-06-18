@@ -107,6 +107,13 @@ final class AppController: ObservableObject {
         settingsController.show()
     }
 
+    /// Shows the standard macOS About panel (app icon, name, version, copyright).
+    /// Activates first because this agent app is non-activating.
+    func showAbout() {
+        NSApp.activate(ignoringOtherApps: true)
+        NSApp.orderFrontStandardAboutPanel(nil)
+    }
+
     func showSnaps(from button: NSStatusBarButton?) {
         snapsGallery.toggle(from: button)
     }

@@ -92,6 +92,7 @@ final class MenuBarController: NSObject {
         menu.addItem(item("Launch at Login", action: #selector(toggleLogin), on: LaunchAtLogin.isEnabled))
 
         menu.addItem(.separator())
+        menu.addItem(item("About SelfCam", action: #selector(showAbout)))
         menu.addItem(item("Quit SelfCam", action: #selector(quit), keyEquivalent: "q"))
         return menu
     }
@@ -145,6 +146,7 @@ final class MenuBarController: NSObject {
     }
     @objc private func showSnaps() { app?.showSnaps(from: statusItem.button) }
     @objc private func openSettings() { app?.openSettings() }
+    @objc private func showAbout() { app?.showAbout() }
     @objc private func toggleNotch() { app?.notchEnabled.toggle() }
     @objc private func takeSnap() { app?.takeSnap() }
     @objc private func toggleLogin() { LaunchAtLogin.set(!LaunchAtLogin.isEnabled) }
