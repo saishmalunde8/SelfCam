@@ -4,6 +4,10 @@ A native macOS **menu-bar camera-check utility** — a personal clone of Hand Mi
 Click the menu-bar icon, see yourself, fix your hair before the call. Built with
 Swift + SwiftUI + AppKit + AVFoundation. No dependencies, no build tooling beyond Xcode.
 
+<!-- TODO: add a screenshot or short GIF of the app here, e.g.:
+![SelfCam](docs/screenshot.png)
+-->
+
 ## Features
 
 - **Menu-bar mirror** — left-click the icon, the camera window emerges from the menu bar
@@ -20,7 +24,18 @@ Swift + SwiftUI + AppKit + AVFoundation. No dependencies, no build tooling beyon
 
 Everything except the live window lives in the **right-click menu** or the **Settings** window.
 
-## Getting started
+## Install
+
+Download the latest `SelfCam-<version>.dmg` from the
+[Releases page](https://github.com/saishmalunde8/SelfCam/releases), open it, and drag
+**SelfCam** onto **Applications**. Launch it from Applications and allow camera access when
+prompted. There's no Dock icon — it lives in the menu bar; **Quit** is in the right-click menu.
+
+> **First launch:** SelfCam isn't notarized by Apple yet, so macOS shows a warning the first
+> time. To open it: **right-click the app → Open → Open**, or go to **System Settings →
+> Privacy & Security** and click **Open Anyway**. Only needed once.
+
+## Build from source
 
 Open `SelfCam.xcodeproj` in Xcode 16 and press **⌘R**. The app has no Dock icon — it lives
 in the menu bar. **Quit** is in the right-click menu.
