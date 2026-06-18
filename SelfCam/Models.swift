@@ -1,4 +1,5 @@
 import SwiftUI
+import Carbon.HIToolbox
 
 /// Fixed window sizes (no free resizing — keeps the live feed crisp).
 /// All 16:9 to match the MacBook camera, five steps from Small to Large.
@@ -90,6 +91,35 @@ enum IconStyle: String, CaseIterable {
         case .video:  return "Video"
         case .eye:    return "Eye"
         case .smiley: return "Smiley"
+        }
+    }
+}
+
+/// Curated global-hotkey choices for toggling the camera window. Low-conflict
+/// combos plus "Off". `carbon` maps to the Carbon key code + modifier mask.
+enum HotKeyPreset: String, CaseIterable {
+    case optCmdM, ctrlCmdM, optCmdC, ctrlCmdC, ctrlOptCmdM, off
+
+    var label: String {
+        switch self {
+        case .optCmdM:     return "⌥⌘M"
+        case .ctrlCmdM:    return "⌃⌘M"
+        case .optCmdC:     return "⌥⌘C"
+        case .ctrlCmdC:    return "⌃⌘C"
+        case .ctrlOptCmdM: return "⌃⌥⌘M"
+        case .off:         return "Off"
+        }
+    }
+
+    /// Carbon key code + modifier mask, or nil when disabled.
+    var carbon: (keyCode: Int, modifiers: Int)? {
+        switch self {
+        case .optCmdM:     return (kVK_ANSI_M, cmdKey | optionKey)
+        case .ctrlCmdM:    return (kVK_ANSI_M, cmdKey | controlKey)
+        case .optCmdC:     return (kVK_ANSI_C, cmdKey | optionKey)
+        case .ctrlCmdC:    return (kVK_ANSI_C, cmdKey | controlKey)
+        case .ctrlOptCmdM: return (kVK_ANSI_M, cmdKey | optionKey | controlKey)
+        case .off:         return nil
         }
     }
 }

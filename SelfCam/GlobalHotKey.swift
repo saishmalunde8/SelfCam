@@ -12,7 +12,9 @@ import Carbon.HIToolbox
 final class GlobalHotKey {
     private var ref: EventHotKeyRef?
     private let action: () -> Void
-    private static var current: GlobalHotKey?
+    // Weak so the instance is owned solely by its holder (AppController.hotKey):
+    // clearing that reference deallocs and unregisters the hotkey.
+    private static weak var current: GlobalHotKey?
 
     init?(keyCode: Int, modifiers: Int, action: @escaping () -> Void) {
         self.action = action

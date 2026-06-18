@@ -65,6 +65,9 @@ struct SettingsView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+                Picker("Shortcut", selection: $app.hotKeyPreset) {
+                    ForEach(HotKeyPreset.allCases, id: \.self) { Text($0.label).tag($0) }
+                }
             }
 
             Section("Snaps") {

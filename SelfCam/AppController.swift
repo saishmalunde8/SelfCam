@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-import Carbon.HIToolbox
 
 /// App-wide coordinator: owns the camera, the window, the notch catcher, and all
 /// persisted settings. The menu bar and the window talk to it.
@@ -24,6 +23,10 @@ final class AppController: ObservableObject {
     /// Camera zoom, 1×–3×. Applied live to preview and to snaps.
     @Published var zoom: Double {
         didSet { defaults.set(zoom, forKey: "zoom"); camera.setZoom(CGFloat(zoom)) }
+    }
+    /// Global shortcut that toggles the camera window.
+    @Published var hotKeyPreset: HotKeyPreset {
+        didSet { defaults.set(hotKeyPreset.rawValue, forKey: "hotKeyPreset"); applyHotKey() }
     }
 
     /// True once the window has been dragged off the menu bar into a floating window.
@@ -52,6 +55,7 @@ final class AppController: ObservableObject {
         notchEnabled = defaults.bool(forKey: "notchEnabled")
         let savedZoom = defaults.double(forKey: "zoom")
         zoom = savedZoom >= 1 ? min(savedZoom, 3) : 1
+        hotKeyPreset = HotKeyPreset(rawValue: defaults.string(forKey: "hotKeyPreset") ?? "") ?? .optCmdM
     }
 
     func start() {
@@ -59,8 +63,15 @@ final class AppController: ObservableObject {
         camera.refreshDevices()
         camera.setZoom(CGFloat(zoom))   // didSet doesn't fire from init; apply now
         updateNotch()
-        // Global ⌥⌘M toggles the camera window from anywhere.
-        hotKey = GlobalHotKey(keyCode: kVK_ANSI_M, modifiers: cmdKey | optionKey) { [weak self] in
+        applyHotKey()                   // didSet doesn't fire from init; apply now
+    }
+
+    /// (Re)registers the global toggle hotkey for the current preset. Tears down
+    /// the old registration first so two hotkeys never share a Carbon EventHotKeyID.
+    private func applyHotKey() {
+        hotKey = nil
+        guard let c = hotKeyPreset.carbon else { return }   // "Off"
+        hotKey = GlobalHotKey(keyCode: c.keyCode, modifiers: c.modifiers) { [weak self] in
             self?.toggleWindow(from: self?.menuBar?.button)
         }
     }
