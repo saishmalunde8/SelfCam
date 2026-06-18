@@ -1,31 +1,28 @@
 import SwiftUI
 import AVFoundation
 
-/// Hosts an AVCaptureVideoPreviewLayer and mirrors / zooms it when requested.
+/// Hosts an AVCaptureVideoPreviewLayer and mirrors it when requested.
+/// (Zoom is a SwiftUI `.scaleEffect` on this view — see CameraFeedView.)
 struct CameraPreviewView: NSViewRepresentable {
     let session: AVCaptureSession
     let isMirrored: Bool
-    var zoom: CGFloat = 1
 
     func makeNSView(context: Context) -> PreviewNSView {
         let view = PreviewNSView()
         view.previewLayer.session = session
         view.previewLayer.videoGravity = .resizeAspectFill
         view.mirrored = isMirrored
-        view.zoom = zoom
         return view
     }
 
     func updateNSView(_ nsView: PreviewNSView, context: Context) {
         nsView.mirrored = isMirrored
-        nsView.zoom = zoom
     }
 }
 
 final class PreviewNSView: NSView {
     let previewLayer = AVCaptureVideoPreviewLayer()
     var mirrored: Bool = true { didSet { if mirrored != oldValue { applyMirror() } } }
-    var zoom: CGFloat = 1 { didSet { applyZoom() } }
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -39,22 +36,8 @@ final class PreviewNSView: NSView {
 
     override func layout() {
         super.layout()
-        // Disable implicit animations so the frame isn't animated independently
-        // when layout fires inside an NSAnimationContext (e.g. the emerge animation).
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
         previewLayer.frame = bounds
-        CATransaction.commit()
-        applyZoom()
         applyMirror()
-    }
-
-    private func applyZoom() {
-        // Scale around the layer centre (anchor 0.5,0.5) with no implicit animation.
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        previewLayer.transform = CATransform3DMakeScale(max(1, zoom), max(1, zoom), 1)
-        CATransaction.commit()
     }
 
     private func applyMirror() {

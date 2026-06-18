@@ -43,12 +43,7 @@ final class CameraWindowController: NSObject, NSWindowDelegate {
 
     func showAttached(from button: NSStatusBarButton?) {
         let wasVisible = panel.isVisible
-        if !wasVisible {
-            camera.acquire()
-            // Force a SwiftUI re-render so updateNSView fires and applyZoom() is
-            // called before the first frame is shown, even if zoom hasn't changed.
-            camera.setZoom(camera.zoom)
-        }
+        if !wasVisible { camera.acquire() }
 
         let screen = button?.window?.screen ?? NSScreen.main
         let size = clampedSize(app?.windowSize.dimensions ?? NSSize(width: 480, height: 270), on: screen)

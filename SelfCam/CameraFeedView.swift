@@ -11,7 +11,10 @@ struct CameraFeedView: View {
         Group {
             switch camera.status {
             case .authorized:
-                CameraPreviewView(session: camera.session, isMirrored: camera.isMirrored, zoom: camera.zoom)
+                // Zoom is a SwiftUI .scaleEffect on the preview only, applied BEFORE the
+                // parent's .clipShape — so the video scales but the window shape doesn't.
+                CameraPreviewView(session: camera.session, isMirrored: camera.isMirrored)
+                    .scaleEffect(camera.zoom)
             case .notDetermined:
                 ProgressView()
             case .denied:
