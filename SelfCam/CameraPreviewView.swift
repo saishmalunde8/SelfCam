@@ -25,7 +25,7 @@ struct CameraPreviewView: NSViewRepresentable {
 final class PreviewNSView: NSView {
     let previewLayer = AVCaptureVideoPreviewLayer()
     var mirrored: Bool = true { didSet { if mirrored != oldValue { applyMirror() } } }
-    var zoom: CGFloat = 1 { didSet { if zoom != oldValue { applyZoom() } } }
+    var zoom: CGFloat = 1 { didSet { applyZoom() } }
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -39,7 +39,12 @@ final class PreviewNSView: NSView {
 
     override func layout() {
         super.layout()
+        // Disable implicit animations so the frame isn't animated independently
+        // when layout fires inside an NSAnimationContext (e.g. the emerge animation).
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
         previewLayer.frame = bounds
+        CATransaction.commit()
         applyZoom()
         applyMirror()
     }
