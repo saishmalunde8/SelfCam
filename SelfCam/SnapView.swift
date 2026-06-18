@@ -142,10 +142,10 @@ struct SnapView: View {
     }
 
     private func save() {
+        // Encode via CGImage → NSBitmapImageRep, matching SnapStore.save (no TIFF round-trip).
         guard let rendered = render(),
-              let tiff = rendered.tiffRepresentation,
-              let bitmap = NSBitmapImageRep(data: tiff),
-              let png = bitmap.representation(using: .png, properties: [:]) else { return }
+              let cg = rendered.cgImage(forProposedRect: nil, context: nil, hints: nil),
+              let png = NSBitmapImageRep(cgImage: cg).representation(using: .png, properties: [:]) else { return }
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.png]
         panel.nameFieldStringValue = "Snap.png"

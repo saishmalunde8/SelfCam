@@ -87,9 +87,8 @@ final class MenuBarController: NSObject {
         notch.isEnabled = NotchCatcher.hasNotch
         menu.addItem(notch)
 
-        let snapItem = item("Take Snap", action: #selector(takeSnap), keyEquivalent: "s")
-        snapItem.isEnabled = app.isCameraActive
-        menu.addItem(snapItem)
+        // Enablement is handled by validateMenuItem (automatic menu validation).
+        menu.addItem(item("Take Snap", action: #selector(takeSnap), keyEquivalent: "s"))
         menu.addItem(item("Launch at Login", action: #selector(toggleLogin), on: LaunchAtLogin.isEnabled))
 
         menu.addItem(.separator())
