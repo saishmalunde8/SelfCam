@@ -15,19 +15,19 @@
 	<key>CFBundleShortVersionString</key>
 	<string>1.2.0</string>
 	<key>CFBundleVersion</key>
-	<string>2</string>
-	<key>NSHumanReadableCopyright</key>
-	<string>© 2026 SelfCam</string>
+	<string>3</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>SelfCam shows your camera so you can check your appearance before calls.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>SelfCam records your voice when you record a table-topic practice clip.</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
+	<key>NSHumanReadableCopyright</key>
+	<string>© 2026 SelfCam</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>SelfCam records your voice when you record a table-topic practice clip.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>

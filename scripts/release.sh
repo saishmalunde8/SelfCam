@@ -28,10 +28,16 @@ DIST_DIR="$(pwd)/dist"
 # (xcodebuild fails if xcode-select points at the Command Line Tools).
 export DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}"
 
-echo "==> Building $SCHEME ($CONFIG)…"
+echo "==> Building $SCHEME ($CONFIG, universal)…"
 rm -rf "$BUILD_DIR"
+# Build BOTH architectures. `-destination "platform=macOS"` resolves to the first
+# matching destination — arm64 on Apple Silicon — which pins the binary to one
+# arch. An arm64-only app cannot launch on an Intel Mac at all (Rosetta translates
+# the other direction), and it fails with no useful error, so releases are built
+# universal even though it roughly doubles the app size.
 xcodebuild -project "$APP_NAME.xcodeproj" -scheme "$SCHEME" -configuration "$CONFIG" \
-  -derivedDataPath "$BUILD_DIR" -destination "platform=macOS" \
+  -derivedDataPath "$BUILD_DIR" \
+  ARCHS="arm64 x86_64" ONLY_ACTIVE_ARCH=NO \
   build | tail -1
 
 APP="$BUILD_DIR/Build/Products/$CONFIG/$APP_NAME.app"
