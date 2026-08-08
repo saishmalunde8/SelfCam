@@ -8,6 +8,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory) // no Dock icon; lives in the menu bar
 
+        LocalPaths.sweepStaleTmp() // clear recordings orphaned by crashes/quits
+
         let controller = AppController()
         let menuBar = MenuBarController(app: controller)
         controller.menuBar = menuBar

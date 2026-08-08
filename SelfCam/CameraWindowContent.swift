@@ -33,8 +33,12 @@ private struct MaskWithArrow: Shape {
 /// (plus an attachment-arrow protrusion when docked), and shape-aware hover controls.
 struct CameraWindowContent: View {
     @ObservedObject var app: AppController
+    @ObservedObject var recording: RecordingManager
     let onClose: () -> Void
     @State private var hovering = false
+
+    // Recording indicator: a green outline tracing the current mask shape.
+    private let recordingGreen = Color(red: 0.20, green: 0.72, blue: 0.38)
 
     private var effectiveShape: AnyShape {
         app.isDetached
@@ -46,6 +50,15 @@ struct CameraWindowContent: View {
         CameraFeedView()
             .clipShape(effectiveShape)
             .animation(.easeInOut(duration: 0.18), value: app.isDetached)
+            // Green outline while recording, traced along the active mask shape.
+            .overlay {
+                if recording.isRecording {
+                    effectiveShape
+                        .stroke(recordingGreen, lineWidth: 3)
+                        .transition(.opacity)
+                }
+            }
+            .animation(.easeInOut(duration: 0.2), value: recording.isRecording)
             // Hover controls — placement is shape-aware
             .overlay {
                 if hovering && app.isDetached {

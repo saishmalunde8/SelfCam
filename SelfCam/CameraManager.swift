@@ -21,10 +21,25 @@ final class CameraManager: ObservableObject {
 
     let session = AVCaptureSession()
     private let photoOutput = AVCapturePhotoOutput()
+    private let movieOutput = AVCaptureMovieFileOutput()
     private var currentInput: AVCaptureDeviceInput?
+    private var audioInput: AVCaptureDeviceInput?
     private let queue = DispatchQueue(label: "selfcam.session")
     private var consumers = 0
     private var captureDelegates: [PhotoCaptureDelegate] = []
+
+    /// True while a movie is being written. Published for the recording UI.
+    @Published private(set) var isRecording = false
+    /// True while the movie + audio outputs are attached (practice mode). They're
+    /// added when practice opens — NOT at Record — so pressing Record never
+    /// reconfigures the running session (which blanked the preview for a frame)
+    /// and the audio connection is fully live before recording begins.
+    private var recordingModeActive = false
+    /// Whether the audio track is currently captured (the mic on/off toggle).
+    @Published private(set) var micEnabled = false
+    /// The system's actual mic-permission decision — read fresh, not cached, so
+    /// it reflects changes made in Settings outside the app.
+    var micAuthStatus: AVAuthorizationStatus { AVCaptureDevice.authorizationStatus(for: .audio) }
 
     private enum Keys {
         static let device = "selectedDeviceID"
@@ -246,6 +261,174 @@ final class CameraManager: ObservableObject {
             DispatchQueue.main.async { self.captureDelegates.append(delegate) }
             self.photoOutput.capturePhoto(with: AVCapturePhotoSettings(), delegate: delegate)
         }
+    }
+
+    // MARK: - Recording (movie + audio)
+    //
+    // All session mutation stays on `queue` — the same serial queue used for
+    // input/photo config — so recording never races the rest of the session.
+    // The movie + audio outputs live for the whole practice session (added by
+    // `beginRecordingMode`, removed by `endRecordingMode`); Record itself changes
+    // no session configuration. This is what makes Record flash-free AND ensures
+    // the audio connection is already live when recording starts.
+
+    /// Attaches the movie output — one configuration, done when practice opens,
+    /// so Record itself never reconfigures the session (no preview flash). The
+    /// mic input is attached here too, but ONLY if already authorized; if
+    /// permission hasn't been decided yet, this does NOT prompt — the note's mic
+    /// button requests it directly, in response to that tap (system permission
+    /// prompts are far more reliable when triggered by a fresh user gesture
+    /// rather than as a side effect of opening a window).
+    func beginRecordingMode() {
+        dispatchPrecondition(condition: .onQueue(.main))
+        recordingModeActive = true
+        let alreadyAuthorized = micAuthStatus == .authorized
+        micEnabled = alreadyAuthorized
+        queue.async { [weak self] in
+            guard let self else { return }
+            self.session.beginConfiguration()
+            if alreadyAuthorized, self.audioInput == nil,
+               let mic = AVCaptureDevice.default(for: .audio),
+               let input = try? AVCaptureDeviceInput(device: mic),
+               self.session.canAddInput(input) {
+                self.session.addInput(input)
+                self.audioInput = input
+            }
+            if !self.session.outputs.contains(self.movieOutput), self.session.canAddOutput(self.movieOutput) {
+                self.session.addOutput(self.movieOutput)
+            }
+            self.session.commitConfiguration()
+        }
+    }
+
+    /// Called directly from the note's mic-icon tap. If permission was never
+    /// decided, activates the app and asks — the direct-response-to-a-click
+    /// context is what makes the system dialog reliably appear. Once granted (now
+    /// or previously), attaches the mic input live if it wasn't already there.
+    func requestMicrophoneAccess(completion: @escaping (Bool) -> Void) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        switch micAuthStatus {
+        case .authorized:
+            attachAudioInputIfNeeded { completion(true) }
+        case .notDetermined:
+            NSApp.activate(ignoringOtherApps: true)
+            AVCaptureDevice.requestAccess(for: .audio) { [weak self] granted in
+                DispatchQueue.main.async {
+                    guard let self else { completion(granted); return }
+                    if granted {
+                        self.attachAudioInputIfNeeded { completion(true) }
+                    } else {
+                        completion(false)
+                    }
+                }
+            }
+        case .denied, .restricted:
+            completion(false)
+        @unknown default:
+            completion(false)
+        }
+    }
+
+    /// Adds the mic input to the already-running session if it isn't there yet
+    /// (e.g. permission was granted after practice mode already opened
+    /// video-only). A brief one-time reconfiguration — expected only right after
+    /// granting, not on every Record.
+    private func attachAudioInputIfNeeded(_ completion: @escaping () -> Void) {
+        guard recordingModeActive else { completion(); return }
+        queue.async { [weak self] in
+            guard let self else { DispatchQueue.main.async { completion() }; return }
+            if self.audioInput == nil,
+               let mic = AVCaptureDevice.default(for: .audio),
+               let input = try? AVCaptureDeviceInput(device: mic) {
+                self.session.beginConfiguration()
+                if self.session.canAddInput(input) {
+                    self.session.addInput(input)
+                    self.audioInput = input
+                }
+                self.session.commitConfiguration()
+            }
+            DispatchQueue.main.async {
+                self.micEnabled = true
+                completion()
+            }
+        }
+    }
+
+    /// Removes the recording outputs when practice closes.
+    func endRecordingMode() {
+        dispatchPrecondition(condition: .onQueue(.main))
+        recordingModeActive = false
+        queue.async { [weak self] in
+            guard let self else { return }
+            self.session.beginConfiguration()
+            if let audio = self.audioInput {
+                self.session.removeInput(audio)
+                self.audioInput = nil
+            }
+            if self.session.outputs.contains(self.movieOutput) {
+                self.session.removeOutput(self.movieOutput)
+            }
+            self.session.commitConfiguration()
+        }
+    }
+
+    /// Mic on/off — flips the audio connection's `isEnabled`, which needs no
+    /// reconfiguration (so it's instant and flash-free). Only meaningful once
+    /// authorized and attached; an un-authorized tap is routed to
+    /// `requestMicrophoneAccess` instead of here.
+    func setMicEnabled(_ enabled: Bool) {
+        guard micAuthStatus == .authorized, audioInput != nil else { return }
+        micEnabled = enabled
+        queue.async { [weak self] in
+            self?.movieOutput.connection(with: .audio)?.isEnabled = enabled
+        }
+    }
+
+    /// Starts writing to `url`. The outputs are already attached, so this changes
+    /// NO session configuration — no preview flash. If capture can't start, the
+    /// acquire is released and `onStartFailure` fires on main so the caller can
+    /// unwind (otherwise it would wait forever for a delegate that never comes).
+    func startRecording(to url: URL, mirrored: Bool,
+                        delegate: AVCaptureFileOutputRecordingDelegate,
+                        onStartFailure: @escaping () -> Void) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        acquire()
+        queue.async { [weak self] in
+            guard let self else { return }
+            if let connection = self.movieOutput.connection(with: .video), connection.isVideoMirroringSupported {
+                connection.automaticallyAdjustsVideoMirroring = false
+                connection.isVideoMirrored = mirrored
+            }
+            let ready = self.session.isRunning
+                && self.session.outputs.contains(self.movieOutput)
+                && !self.movieOutput.isRecording
+            guard ready else {
+                DispatchQueue.main.async {
+                    self.isRecording = false
+                    self.release()
+                    onStartFailure()
+                }
+                return
+            }
+            self.movieOutput.startRecording(to: url, recordingDelegate: delegate)
+            DispatchQueue.main.async { self.isRecording = true }
+        }
+    }
+
+    func stopRecording() {
+        queue.async { [weak self] in
+            guard let self, self.movieOutput.isRecording else { return }
+            self.movieOutput.stopRecording()
+        }
+    }
+
+    /// Call from the recording delegate once the file is finalized. Releases the
+    /// recording acquire; the outputs stay attached for the rest of the practice
+    /// session (removed by `endRecordingMode`).
+    func finishRecordingCleanup() {
+        dispatchPrecondition(condition: .onQueue(.main))
+        isRecording = false
+        release()
     }
 }
 

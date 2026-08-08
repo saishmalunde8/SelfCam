@@ -85,6 +85,21 @@ struct SettingsView: View {
                 }
             }
 
+            Section("Table Topics") {
+                Toggle("Sound cues", isOn: $app.soundCuesEnabled)
+                Text("A soft tick on record-start and a chime on save.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Recordings")
+                    Text(LocalPaths.recordings.path)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+            }
+
             Section("General") {
                 Toggle("Launch at Login", isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, newValue in

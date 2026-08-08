@@ -13,7 +13,7 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.1.0</string>
+	<string>1.2.0</string>
 	<key>CFBundleVersion</key>
 	<string>2</string>
 	<key>NSHumanReadableCopyright</key>
@@ -24,6 +24,8 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>SelfCam shows your camera so you can check your appearance before calls.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>SelfCam records your voice when you record a table-topic practice clip.</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSPrincipalClass</key>

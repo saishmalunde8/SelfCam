@@ -11,6 +11,15 @@ final class CameraWindowController: NSObject, NSWindowDelegate {
     private var ignoreMove = false
 
     var isVisible: Bool { panel.isVisible }
+    /// The camera window itself — the practice note attaches to it as a child.
+    var cameraWindow: NSWindow { panel }
+
+    /// Fires once a show/resize settles, so an attached companion panel (the
+    /// practice note) can reposition itself against the new frame.
+    var onSettled: (() -> Void)?
+    /// Fires when the camera window closes, by whichever path (hover ✕ or the
+    /// menu), so an attached companion panel can hide too.
+    var onClosed: (() -> Void)?
 
     init(app: AppController, camera: CameraManager) {
         self.app = app
@@ -32,7 +41,8 @@ final class CameraWindowController: NSObject, NSWindowDelegate {
         panel.isReleasedWhenClosed = false
         panel.delegate = self
 
-        let content = CameraWindowContent(app: app, onClose: { [weak self] in self?.close() })
+        let content = CameraWindowContent(app: app, recording: app.recordingManager,
+                                          onClose: { [weak self] in self?.close() })
             .environmentObject(camera)
         let hosting = NSHostingView(rootView: content)
         hosting.autoresizingMask = [.width, .height]
@@ -69,6 +79,7 @@ final class CameraWindowController: NSObject, NSWindowDelegate {
             Task { @MainActor in
                 self?.ignoreMove = false
                 self?.panel.invalidateShadow()
+                self?.onSettled?()
             }
         })
 
@@ -79,6 +90,7 @@ final class CameraWindowController: NSObject, NSWindowDelegate {
         panel.orderOut(nil)
         camera.release()
         app?.isDetached = false
+        onClosed?()
     }
 
     // MARK: - Size / shape
@@ -105,6 +117,7 @@ final class CameraWindowController: NSObject, NSWindowDelegate {
             Task { @MainActor in
                 self?.ignoreMove = false
                 self?.panel.invalidateShadow()
+                self?.onSettled?()
             }
         })
     }

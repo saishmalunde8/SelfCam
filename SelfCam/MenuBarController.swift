@@ -1,5 +1,6 @@
 import AppKit
 import AVFoundation
+import Combine
 
 /// Owns the menu-bar status item. Left-click toggles the camera window;
 /// right-click (or control-click) opens the settings menu.
@@ -8,6 +9,7 @@ final class MenuBarController: NSObject {
     private let statusItem: NSStatusItem
     private weak var app: AppController?
     private var camera: CameraManager? { app?.camera }
+    private var cancellables: Set<AnyCancellable> = []
 
     var button: NSStatusBarButton? { statusItem.button }
 
@@ -21,6 +23,11 @@ final class MenuBarController: NSObject {
             button.action = #selector(handleClick)
             button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
+        // Re-badge the icon with a red dot whenever recording starts/stops.
+        app.recordingManager.$phase
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.updateIcon() }
+            .store(in: &cancellables)
     }
 
     func updateIcon() {
@@ -29,6 +36,19 @@ final class MenuBarController: NSObject {
             systemSymbolName: app.iconStyle.symbol,
             accessibilityDescription: "SelfCam"
         )
+        // A red dot beside the (template) icon while recording. Using an attributed
+        // title keeps the icon a proper template that adapts to the menu-bar tint —
+        // compositing the dot into the image would force a non-template icon.
+        if app.recordingManager.isRecording {
+            statusItem.button?.imagePosition = .imageLeft
+            statusItem.button?.attributedTitle = NSAttributedString(
+                string: "●",
+                attributes: [.foregroundColor: NSColor.systemRed,
+                             .font: NSFont.systemFont(ofSize: 9)]
+            )
+        } else {
+            statusItem.button?.attributedTitle = NSAttributedString(string: "")
+        }
     }
 
     @objc private func handleClick() {
@@ -79,6 +99,8 @@ final class MenuBarController: NSObject {
         menu.addItem(.separator())
 
         menu.addItem(item("Snaps", action: #selector(showSnaps)))
+        menu.addItem(item("Table Topics", action: #selector(openPractice), keyEquivalent: "t"))
+        menu.addItem(item("Recent Clips", action: #selector(showRecentClips), keyEquivalent: "r"))
         menu.addItem(item("Settings…", action: #selector(openSettings), keyEquivalent: ","))
 
         menu.addItem(.separator())
@@ -145,6 +167,8 @@ final class MenuBarController: NSObject {
         if let style = sender.representedObject as? IconStyle { app?.iconStyle = style }
     }
     @objc private func showSnaps() { app?.showSnaps(from: statusItem.button) }
+    @objc private func showRecentClips() { app?.showRecentClips(from: statusItem.button) }
+    @objc private func openPractice() { app?.openPractice(from: statusItem.button) }
     @objc private func openSettings() { app?.openSettings() }
     @objc private func showAbout() { app?.showAbout() }
     @objc private func toggleNotch() { app?.notchEnabled.toggle() }
